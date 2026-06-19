@@ -1057,7 +1057,7 @@ Tensor &FloatTensor::dotQs4cx(Tensor const &input, Tensor &output, bool trans,
    * matmul_clamp_f32_qai8dxp4x8_qsi4cxp8x8_8x8x32_neon_i8mm
    * @todo update kernel index for SVE, SME
    */
-  size_t opt_kernel_idx = (M == 1) ? 2 : 8;
+  size_t opt_kernel_idx = (M==1)?10:9;
 
   gemm_qai8dxp_qsi4cxp(M, N, K, lhs, rhs, out, opt_kernel_idx);
 #elif defined(__x86_64__) || defined(__i586__) || defined(_M_X64) ||           \

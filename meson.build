@@ -181,7 +181,10 @@ if get_option('enable-fp16')
      endif
      # Use arm-arch option for architecture-specific flags
      arm_arch_opt = get_option('arm-arch')
-     if arm_arch_opt == 'armv9.2-a'
+     if arm_arch_opt == 'armv9.3-a'
+       add_project_arguments('-march=armv9.2-a+fp16+sve2+sme+sme2', language: ['c', 'cpp'])
+       extra_defines += '-DENABLE_SME2=1'
+     elif arm_arch_opt == 'armv9.2-a'
        add_project_arguments('-march=armv9.2-a+fp16+sve2+sme', language: ['c', 'cpp'])
        extra_defines += '-DARM_ARCH_ARMV9_2A=1'
        extra_defines += '-DENABLE_SVE2=1'

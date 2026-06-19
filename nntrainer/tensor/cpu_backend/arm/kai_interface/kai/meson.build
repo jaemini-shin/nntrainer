@@ -4,7 +4,7 @@ kai_headers = [
 
 kai_sources = []
 
-if get_option('arm-arch') == 'armv9.2-a'
+if get_option('arm-arch') == 'armv9.3-a' or get_option('arm-arch') == 'armv9.2-a'
 kai_sources = [
   'kai_common_sve_asm.S',
   'kai_common_sme_asm.S'

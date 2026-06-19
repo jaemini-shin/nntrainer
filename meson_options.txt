@@ -73,7 +73,7 @@ option('causallm-tokenizer-lib', type: 'string', value: '',
 
 # ARM architecture options
 option('arm-arch', type: 'combo',
-       choices: ['none', 'armv7l', 'armv8.2-a', 'armv9.2-a'],
+       choices: ['none', 'armv7l', 'armv8.2-a', 'armv9.2-a', 'armv9.3-a'],
        value: 'none',
        description: 'Target ARM architecture. "none" disables arm related features.')
 option('arm-march', type: 'string',

@@ -12,7 +12,9 @@ if get_option('platform') == 'android'
   if arm_march_flag == ''
     # Fallback: derive from arm-arch (for builds without --arm-arch argument)
     arm_arch_opt = get_option('arm-arch')
-    if arm_arch_opt == 'armv9.2-a'
+    if arm_arch_opt == 'armv9.3-a'
+      arm_march_flag = '-march=armv9.2-a+fp16+sve2+sme+sme2'
+    elif arm_arch_opt == 'armv9.2-a'
       arm_march_flag = '-march=armv9.2-a+fp16+sve2+sme'
     elif arm_arch_opt == 'armv8.2-a' or arm_arch_opt == 'auto'
       arm_march_flag = '-march=armv8.2-a+fp16+dotprod+i8mm'

@@ -56,10 +56,16 @@
 #include "kai/matmul_clamp_f32_qai8dxp_qsi4cxp/kai_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme_dot.h"
 #endif
 
+#if defined(__ARM_FEATURE_SME2)
+#include "kai_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa.h"
+#include "kai_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot.h"
+#endif
+
 // Include packinng kernels
 #include "kai/pack/kai_lhs_quant_pack_qai8dxp_f32.h"
 #include "kai/pack/kai_rhs_pack_kxn_qsi4cxp_qs4cxs1s0.h"
 #include "kai/pack/kai_rhs_pack_nxk_qsi4cxp_qs4cxs1s0.h"
+#include "kai/pack/kai_rhs_pack_nxk_qsi4cxps1s0_qsu4cxs1s0_neon.h"
 
 #define INT4_MIN (-8)
 #define INT4_MAX (7)
@@ -212,7 +218,32 @@ kai_matmul_ukernel_f32_qa8dxp_qs4cxp ukernel_variants[] = {
    kai_run_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme_dot,
    "matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme_dot"},
 #endif
-
+#if defined(__ARM_FEATURE_SME2)
+  {kai_get_m_step_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa,
+   kai_get_n_step_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa,
+   kai_get_mr_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa,
+   kai_get_nr_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa,
+   kai_get_kr_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa,
+   kai_get_sr_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa,
+   kai_get_lhs_packed_offset_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa,
+   kai_get_rhs_packed_offset_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa,
+   kai_get_dst_offset_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa,
+   kai_get_dst_size_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa,
+   kai_run_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa,
+   "matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa"},
+  {kai_get_m_step_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot,
+   kai_get_n_step_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot,
+   kai_get_mr_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot,
+   kai_get_nr_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot,
+   kai_get_kr_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot,
+   kai_get_sr_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot,
+   kai_get_lhs_packed_offset_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot,
+   kai_get_rhs_packed_offset_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot,
+   kai_get_dst_offset_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot,
+   kai_get_dst_size_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot,
+   kai_run_matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot,
+   "matmul_clamp_f32_qai8dxp1x4_qsi4cxp4vlx4_1x4vl_sme2_sdot"},
+#endif
 };
 
 const size_t num_ukernel_variants =
@@ -235,12 +266,17 @@ size_t __kai_get_rhs_packed_size_qsi4cxp_qs4cxs1s0(size_t n, size_t k,
   const size_t kr = ukernel_variants[idx_variant].ukernel.get_kr();
   const size_t sr = ukernel_variants[idx_variant].ukernel.get_sr();
 
-  if (is_nxk) {
-    return kai_get_rhs_packed_size_rhs_pack_nxk_qsi4cxp_qs4cxs1s0(n, k, nr, kr,
-                                                                  sr);
+  if (idx_variant <= 10) {
+    if (is_nxk) {
+      return kai_get_rhs_packed_size_rhs_pack_nxk_qsi4cxp_qs4cxs1s0(n, k, nr,
+                                                                    kr, sr);
+    } else {
+      return kai_get_rhs_packed_size_rhs_pack_kxn_qsi4cxp_qs4cxs1s0(n, k, nr,
+                                                                    kr, sr);
+    }
   } else {
-    return kai_get_rhs_packed_size_rhs_pack_kxn_qsi4cxp_qs4cxs1s0(n, k, nr, kr,
-                                                                  sr);
+    return kai_get_rhs_packed_size_rhs_pack_nxk_qsi4cxps1s0_qsu4cxs1s0_neon(
+      n, k, nr, kr, sr);
   }
 }
 
@@ -253,30 +289,44 @@ void __kai_rhs_pack_qsi4cxp_qs4cxs1s0(size_t n, size_t k,
   const size_t kr = ukernel_variants[idx_variant].ukernel.get_kr();
   const size_t sr = ukernel_variants[idx_variant].ukernel.get_sr();
 
-  if (is_nxk) {
-    struct kai_rhs_pack_nxk_qsi4cxp_qs4cxs1s0_params nxk_params;
+  if (idx_variant <= 10) {
+    if (is_nxk) {
+      struct kai_rhs_pack_nxk_qsi4cxp_qs4cxs1s0_params nxk_params;
+      nxk_params.lhs_zero_point = 1;
+      nxk_params.rhs_zero_point = 8;
+      // RHS packing
+      kai_run_rhs_pack_nxk_qsi4cxp_qs4cxs1s0(
+        1, n, k, nr, kr, sr,                     // Packing arguments
+        (const uint8_t *)(rhs_native_mtx_qs4cx), // RHS
+        NULL,                                    // Bias
+        (const float *)(rhs_scales_f32),         // Scale
+        rhs_packed_mtx_qs4cx,                    // RHS packed
+        0, &nxk_params);
+    } else {
+      struct kai_rhs_pack_kxn_qsi4cxp_qs4cxs1s0_params kxn_params;
+      kxn_params.lhs_zero_point = 1;
+      kxn_params.rhs_zero_point = 8;
+      // RHS packing
+      kai_run_rhs_pack_kxn_qsi4cxp_qs4cxs1s0(
+        1, n, k, nr, kr, sr,                     // Packing arguments
+        (const uint8_t *)(rhs_native_mtx_qs4cx), // RHS
+        NULL,                                    // Bias
+        (const float *)(rhs_scales_f32),         // Scale
+        rhs_packed_mtx_qs4cx,                    // RHS packed
+        0, &kxn_params);
+    }
+  } else {
+    struct kai_rhs_pack_nxk_qsi4cxps1s0_qsu4cxs1s0_neon_params nxk_params;
     nxk_params.lhs_zero_point = 1;
     nxk_params.rhs_zero_point = 8;
     // RHS packing
-    kai_run_rhs_pack_nxk_qsi4cxp_qs4cxs1s0(
+    kai_run_rhs_pack_nxk_qsi4cxps1s0_qsu4cxs1s0_neon(
       1, n, k, nr, kr, sr,                     // Packing arguments
       (const uint8_t *)(rhs_native_mtx_qs4cx), // RHS
       NULL,                                    // Bias
       (const float *)(rhs_scales_f32),         // Scale
       rhs_packed_mtx_qs4cx,                    // RHS packed
       0, &nxk_params);
-  } else {
-    struct kai_rhs_pack_kxn_qsi4cxp_qs4cxs1s0_params kxn_params;
-    kxn_params.lhs_zero_point = 1;
-    kxn_params.rhs_zero_point = 8;
-    // RHS packing
-    kai_run_rhs_pack_kxn_qsi4cxp_qs4cxs1s0(
-      1, n, k, nr, kr, sr,                     // Packing arguments
-      (const uint8_t *)(rhs_native_mtx_qs4cx), // RHS
-      NULL,                                    // Bias
-      (const float *)(rhs_scales_f32),         // Scale
-      rhs_packed_mtx_qs4cx,                    // RHS packed
-      0, &kxn_params);
   }
 }
 
@@ -336,7 +386,7 @@ void __kai_gemm_qai8dxp_qsi4cxp(size_t m, size_t n, size_t k,
   auto &tm = nntrainer::ThreadManager::Global();
 
   /// @todo find better heuristic
-  if (m_step > n_step) {
+  if (m_loop > n_loop) {
     // parallelize over m
     tm.parallel_for(0, m_loop, [&](size_t i) {
       size_t m_start = i * m_step;

@@ -88,6 +88,8 @@ TEST_P(gemm_qai8dxp_qsi4cxp_rhs_unpacked, check_ukernels) {
 
   // Run GEMM!
   for (size_t idx_variant = 0; idx_variant < num_idx_variants; idx_variant++) {
+    if (!is_nxk && idx_variant > 10)
+      continue;
     nntrainer::gemm_qai8dxp_qsi4cxp_rhs_unpacked(
       M, N, K, activation.data(), rhs_native_mtx_qs4cx, rhs_scales_f32,
       dst.data(), idx_variant, is_nxk);

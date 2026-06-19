@@ -116,7 +116,7 @@ else
         log_info "Removing existing builddir..."
         rm -rf builddir
     fi
-    ./tools/package_android.sh
+    ./tools/package_android.sh --arm-arch=armv9.3-a
 fi
 
 # Check if build was successful

@@ -71,7 +71,7 @@ void QS4CX_Tensor::pack() {
     return;
   }
 
-  size_t opt_kernel_idx = 8;
+  size_t opt_kernel_idx = 9;
   const size_t K = height();
   const size_t N = width();
 
