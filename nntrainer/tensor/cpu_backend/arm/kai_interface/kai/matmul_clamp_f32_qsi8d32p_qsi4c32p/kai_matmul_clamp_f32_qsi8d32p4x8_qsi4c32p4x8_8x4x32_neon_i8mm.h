@@ -8,9 +8,8 @@
  * copied from kleidiai
  *
  */
-
 //
-// SPDX-FileCopyrightText: Copyright 2024 Arm Limited and/or its affiliates
+// SPDX-FileCopyrightText: Copyright 2024,2026 Arm Limited and/or its affiliates
 // <open-source-office@arm.com>
 //
 // SPDX-License-Identifier: Apache-2.0
@@ -81,7 +80,7 @@ kai_get_sr_matmul_clamp_f32_qsi8d32p4x8_qsi4c32p4x8_8x4x32_neon_i8mm(void);
 /// @param[in] m_idx Row index in the LHS matrix (not packed). It must be a
 /// multiple of 8
 /// @param[in] k     Total number of columns in the LHS matrix (not packed).
-/// @param[in] bl    Block length. It must be 32.
+/// @param[in] bl    Block length. It must be a multiple of 32.
 ///
 /// @return the offset in bytes to the packed LHS matrix
 size_t
@@ -97,7 +96,7 @@ kai_get_lhs_packed_offset_matmul_clamp_f32_qsi8d32p4x8_qsi4c32p4x8_8x4x32_neon_i
 /// @param[in] n_idx Row index in the RHS matrix (not packed). It must be a
 /// multiple of 4.
 /// @param[in] k     The common dimension between the LHS and RHS matrix (K).
-/// @param[in] bl    Block length. It must be 32.
+/// @param[in] bl    Block length. It must be a multiple of 32.
 ///
 /// @return the offset in bytes to the packed RHS matrix
 size_t
@@ -145,7 +144,7 @@ kai_get_dst_size_matmul_clamp_f32_qsi8d32p4x8_qsi4c32p4x8_8x4x32_neon_i8mm(
 /// @param[in]  n              The number of output columns written.
 /// @param[in]  k              The number of channels. The common dimension
 /// between the LHS and RHS matrix.
-/// @param[in]  bl             Block length. It must be 32.
+/// @param[in]  bl             Block length. It must be a multiple of 32.
 /// @param[in]  lhs_packed     The LHS packed matrix.
 ///                            When the activation are dynamically quantized,
 ///                            you can obtain this matrix by calling the @ref

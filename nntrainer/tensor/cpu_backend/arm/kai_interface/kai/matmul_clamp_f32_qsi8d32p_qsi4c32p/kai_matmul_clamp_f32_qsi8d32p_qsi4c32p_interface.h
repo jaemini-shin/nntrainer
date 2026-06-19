@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
 /**
  * Copyright (C) 2024 Arm Limited and/or its affiliates
  * Copyright (C) 2024 Sungsik Kong <ss.kong@samsung.com>
@@ -19,6 +18,12 @@
  *
  * @bug    No known bugs except for NYI items
  */
+//
+// SPDX-FileCopyrightText: Copyright 2024-2025 Arm Limited and/or its affiliates
+// <open-source-office@arm.com>
+//
+// SPDX-License-Identifier: Apache-2.0
+//
 #pragma once
 
 #include <stddef.h>

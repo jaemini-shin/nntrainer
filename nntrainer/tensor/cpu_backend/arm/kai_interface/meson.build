@@ -3,12 +3,12 @@ kai_interface_headers = [
 ]
 kai_interface_sources = [
     'kleidiai_interface_qai8dxp_qsi4cxp.cpp',
-    'kleidiai_interface_qsi8d32p_qsi4c32p.cpp',
 ]
 
-subdir('kai')
-nntrainer_inc += include_directories('kai')
-nntrainer_inc_abs += meson.current_source_dir() / 'kai'
+if get_option('platform') != 'windows'
+kai_interface_sources += [
+    'kleidiai_interface_qsi8d32p_qsi4c32p.cpp',
+]
 
 # Select thread backend for kleidiai parallel implementation
 if get_option('thread-backend') == 'bstp'
@@ -21,7 +21,11 @@ else
   message('Unknown thread-backend meson option! Use omp as a default for kleidiai.')
   kai_interface_sources += 'kleidiai_interface_qsi8d32p_qsi4c32p_omp.cpp'
 endif
+endif
 
+subdir('kai')
+nntrainer_inc += include_directories('kai')
+nntrainer_inc_abs += meson.current_source_dir() / 'kai'
 
 foreach s : kai_interface_sources
   nntrainer_sources += meson.current_source_dir() / s

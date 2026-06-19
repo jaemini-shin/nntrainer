@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
 /**
  * Copyright (C) 2024 Arm Limited and/or its affiliates
  * Copyright (C) 2024 Sungsik Kong <ss.kong@samsung.com>
@@ -18,6 +17,12 @@
  *
  * @bug    No known bugs except for NYI items
  */
+//
+// SPDX-FileCopyrightText: Copyright 2024-2026 Arm Limited and/or its affiliates
+// <open-source-office@arm.com>
+//
+// SPDX-License-Identifier: Apache-2.0
+//
 #pragma once
 
 #if defined(__ARM_NEON)
@@ -141,15 +146,23 @@ extern "C" {
 #define KAI_MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define KAI_MAX(a, b) (((a) > (b)) ? (a) : (b))
 
-/// Largest supported SME vector length in bytes
-#define KAI_SME_VEC_LENGTH_MAX_BYTES                                           \
-  256 // NOLINT(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum)
+/// KleidiAI shared constants
+enum {
+  /// Largest supported SME vector length in bytes
+  KAI_SME_VEC_LENGTH_MAX_BYTES = 256,
+
+  /// Size of one vscale unit, in bytes
+  KAI_VSCALE_UNIT_BYTES = 16,
+
+  /// Maximum possible VSCALE
+  KAI_VSCALE_MAX = KAI_SME_VEC_LENGTH_MAX_BYTES / KAI_VSCALE_UNIT_BYTES,
+};
 
 /// Gets the version of the project in the Major.Minor.Patch semantic versioning
 /// format.
 ///
 /// @return Project version as a string literal.
-inline const char *kai_get_version(void) { return "1.17.0"; }
+inline const char *kai_get_version(void) { return "1.25.0"; }
 
 /// @brief KleidiAI data types
 /// Format: <byte 3>(reserved)|<byte 2>(num-bytes)|<byte 1>(type)|<byte
@@ -229,8 +242,14 @@ inline static uint16_t kai_cast_f16_f32(float f32) {
 }
 #endif
 
+/// Divide a value, `a`, with a value `b` and round up the result
+inline static size_t kai_div_ceil(size_t a, size_t b) {
+  return (a + b - 1) / b;
+}
+
+/// Round up a value, `a` to a multiple of `b`
 inline static size_t kai_roundup(size_t a, size_t b) {
-  return ((a + b - 1) / b) * b;
+  return kai_div_ceil(a, b) * b;
 }
 
 #if defined(__ARM_FEATURE_SVE2) || defined(_M_ARM64)
@@ -245,6 +264,11 @@ inline static uint64_t kai_get_sme_vector_length_u16(void) {
 /// Gets the SME vector length for 32-bit elements.
 inline static uint64_t kai_get_sme_vector_length_u32(void) {
   return kai_get_sme_vector_length_u8() / 4;
+}
+
+/// Gets the vscale scale factor for SME
+inline static uint64_t kai_get_sme_vscale(void) {
+  return kai_get_sme_vector_length_u8() / KAI_VSCALE_UNIT_BYTES;
 }
 
 /// Commit ZA to lazy save buffer
@@ -270,7 +294,7 @@ inline static uint64_t kai_get_sve_vector_length_u32(void) {
 /// @return the int8_t value with sign extended
 inline static int8_t kai_ext_sign_i8_i4(int8_t value) {
   // Make sure value holds correct int4 value
-  KAI_ASSERT(value <= 0xF);
+  KAI_ASSUME(value <= 0xF);
 
   return (value ^ 0x8) -
          8; // NOLINT(bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions)
@@ -287,6 +311,14 @@ struct kai_rhs_pack_qsi8cx_params {
 /// @brief Parameter struct for RHS matrix packing (Quantized Symmetric Integer
 /// 4-bit with per-block quantizatio and s1s0 nibble ordering)
 struct kai_rhs_pack_nxk_qsi4c32p_qsu4c32s1s0_params {
+  int8_t lhs_zero_point;
+  uint8_t rhs_zero_point;
+  enum kai_datatype scale_dt;
+};
+
+/// @brief Parameter struct for RHS matrix packing (KxN variant for int4
+/// qsi4c32p_qsu4c32s1s0)
+struct kai_rhs_pack_kxn_qsi4c32p_qsu4c32s1s0_params {
   int8_t lhs_zero_point;
   uint8_t rhs_zero_point;
   enum kai_datatype scale_dt;
