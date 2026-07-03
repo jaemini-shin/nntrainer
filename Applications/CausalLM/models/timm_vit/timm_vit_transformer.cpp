@@ -219,7 +219,7 @@ Tensor TimmViTTransformer::createAttention(const int layer_id, Tensor input) {
                                {withKey("name", prefix + "attention_norm"),
                                 withKey("axis", "3"),
                                 withKey("epsilon", std::to_string(NORM_EPS)),
-                                withKey("packed", "false")}));
+                                withKey("use_global_weight_dtype", "false")}));
   Tensor normed = norm(input);
 
   auto q = prefix + "qkv_q", k = prefix + "qkv_k", v = prefix + "qkv_v",
@@ -268,7 +268,7 @@ Tensor TimmViTTransformer::createMlp(const int layer_id, Tensor input) {
     createLayer("layer_normalization",
                 {withKey("name", prefix + "ffn_norm"), withKey("axis", "3"),
                  withKey("epsilon", std::to_string(NORM_EPS)),
-                 withKey("packed", "false")}));
+                 withKey("use_global_weight_dtype", "false")}));
   Tensor h = norm(input);
 
   LayerHandle fc_up(createLayer(
@@ -322,7 +322,7 @@ std::pair<Tensor, Tensor> TimmViTTransformer::constructModel() {
     createLayer("layer_normalization",
                 {withKey("name", "output_norm"), withKey("axis", "3"),
                  withKey("epsilon", std::to_string(NORM_EPS)),
-                 withKey("packed", "false")}));
+                 withKey("use_global_weight_dtype", "false")}));
   h = output_norm(h);
 
   return {input, h};

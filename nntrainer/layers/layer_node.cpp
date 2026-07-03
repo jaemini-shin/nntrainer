@@ -199,11 +199,11 @@ LayerNode::LayerNode(std::unique_ptr<nntrainer::Layer> &&l) :
 
   output_connections(),
   run_context(nullptr),
-  layer_node_props(
-    new PropsType(props::Name(), props::Distribute(), props::Trainable(), {},
-                  {}, props::SharedFrom(), props::ClipGradByGlobalNorm(),
-                  props::Packed(), props::WeightDtype(), props::InputDtype(),
-                  props::LossScaleForMixed(), props::ComputeEngine())),
+  layer_node_props(new PropsType(
+    props::Name(), props::Distribute(), props::Trainable(), {}, {},
+    props::SharedFrom(), props::ClipGradByGlobalNorm(),
+    props::UseGlobalWeightDtype(), props::WeightDtype(), props::InputDtype(),
+    props::LossScaleForMixed(), props::ComputeEngine())),
   layer_node_props_realization(
     new RealizationPropsType(props::Flatten(), props::Activation())),
   loss(new props::Loss()),
@@ -638,10 +638,11 @@ InitLayerContext LayerNode::finalize(const std::vector<TensorDim> &input_dims,
     compute_engine = std::get<props::ComputeEngine>(*layer_node_props).get();
   }
 
-  if (!std::get<props::Packed>(*layer_node_props).empty()) {
-    bool isPacked = std::get<props::Packed>(*layer_node_props);
-    if (!isPacked) {
-      // set weight type = activation type
+  if (!std::get<props::UseGlobalWeightDtype>(*layer_node_props).empty()) {
+    bool useGlobalWeightDtype =
+      std::get<props::UseGlobalWeightDtype>(*layer_node_props);
+    if (!useGlobalWeightDtype) {
+      // if not using global weight dtype, use activation type instead
       tensor_type[1] = tensor_type[2];
     }
   }

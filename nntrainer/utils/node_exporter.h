@@ -233,7 +233,7 @@ class ClipGradByGlobalNorm;
 class DisableBias;
 class Activation;
 class BatchNormalization;
-class Packed;
+class UseGlobalWeightDtype;
 class LossScaleForMixed;
 class InPlaceProp;
 class InPlaceDirectionProp;
@@ -252,7 +252,7 @@ void Exporter::saveTflResult(
   const std::tuple<props::Name, props::Distribute, props::Trainable,
                    std::vector<props::InputConnection>,
                    std::vector<props::InputShape>, props::SharedFrom,
-                   props::ClipGradByGlobalNorm, props::Packed,
+                   props::ClipGradByGlobalNorm, props::UseGlobalWeightDtype,
                    props::WeightDtype, props::InputDtype,
                    props::LossScaleForMixed, props::ComputeEngine> &props,
   const LayerNode *self);

@@ -151,9 +151,10 @@ std::pair<Tensor, Tensor> DebertaV2::constructTransformerModule() {
   Tensor h = embedding(x);
 
   LayerHandle embedding_norm(createLayer(
-    "layer_normalization", {withKey("name", "embeddings_norm"),
-                            withKey("epsilon", toStringPrecise(NORM_EPS)),
-                            withKey("axis", 3), withKey("packed", "false")}));
+    "layer_normalization",
+    {withKey("name", "embeddings_norm"),
+     withKey("epsilon", toStringPrecise(NORM_EPS)), withKey("axis", 3),
+     withKey("use_global_weight_dtype", "false")}));
   h = embedding_norm(h);
 
   const int rel_embed_size =
@@ -175,9 +176,10 @@ std::pair<Tensor, Tensor> DebertaV2::constructTransformerModule() {
 
   if (NORM_REL_EBD) {
     LayerHandle rel_embedding_norm(createLayer(
-      "layer_normalization", {withKey("name", "rel_embeddings_norm"),
-                              withKey("epsilon", toStringPrecise(NORM_EPS)),
-                              withKey("axis", 3), withKey("packed", "false")}));
+      "layer_normalization",
+      {withKey("name", "rel_embeddings_norm"),
+       withKey("epsilon", toStringPrecise(NORM_EPS)), withKey("axis", 3),
+       withKey("use_global_weight_dtype", "false")}));
     rel = rel_embedding_norm(rel);
   }
 
@@ -199,9 +201,10 @@ Tensor DebertaV2::createDebertaLayer(const int layer_id, Tensor input,
   Tensor attention_residual = attention_res({input, att_out});
 
   LayerHandle attention_norm(createLayer(
-    "layer_normalization", {withKey("name", prefix + "_attention_norm"),
-                            withKey("epsilon", toStringPrecise(NORM_EPS)),
-                            withKey("axis", 3), withKey("packed", "false")}));
+    "layer_normalization",
+    {withKey("name", prefix + "_attention_norm"),
+     withKey("epsilon", toStringPrecise(NORM_EPS)), withKey("axis", 3),
+     withKey("use_global_weight_dtype", "false")}));
   Tensor attention_normed = attention_norm(attention_residual);
 
   LayerHandle intermediate(createLayer(
@@ -222,9 +225,10 @@ Tensor DebertaV2::createDebertaLayer(const int layer_id, Tensor input,
   Tensor output_residual = output_res({attention_normed, output_dense_out});
 
   LayerHandle output_norm(createLayer(
-    "layer_normalization", {withKey("name", prefix + "_output"),
-                            withKey("epsilon", toStringPrecise(NORM_EPS)),
-                            withKey("axis", 3), withKey("packed", "false")}));
+    "layer_normalization",
+    {withKey("name", prefix + "_output"),
+     withKey("epsilon", toStringPrecise(NORM_EPS)), withKey("axis", 3),
+     withKey("use_global_weight_dtype", "false")}));
 
   return output_norm(output_residual);
 }

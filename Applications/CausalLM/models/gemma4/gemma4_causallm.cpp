@@ -282,10 +282,11 @@ std::pair<Tensor, Tensor> Gemma4Transformer::constructModel() {
   Tensor per_layer_projected = per_layer_projection(h);
 
   float ple_proj_scale = 1.0f / std::sqrt(static_cast<float>(DIM));
-  LayerHandle model_proj_scale(createLayer(
-    "scalar_multiply",
-    {withKey("name", "per_layer_model_proj_scale"), withKey("packed", "false"),
-     withKey("multiplier", std::to_string(ple_proj_scale))}));
+  LayerHandle model_proj_scale(
+    createLayer("scalar_multiply",
+                {withKey("name", "per_layer_model_proj_scale"),
+                 withKey("use_global_weight_dtype", "false"),
+                 withKey("multiplier", std::to_string(ple_proj_scale))}));
   Tensor scaled_projection = model_proj_scale(per_layer_projected);
 
   LayerHandle projection_norm(createLayer(
@@ -294,7 +295,7 @@ std::pair<Tensor, Tensor> Gemma4Transformer::constructModel() {
       withKey("name", "per_layer_projection_norm"),
       withKey("epsilon", std::to_string(NORM_EPS)),
       withKey("feature_size", std::to_string(HIDDEN_SIZE_PER_LAYER_INPUT)),
-      withKey("packed", "false"),
+      withKey("use_global_weight_dtype", "false"),
     }));
   Tensor normalized_projection = projection_norm(scaled_projection);
 
@@ -311,7 +312,7 @@ std::pair<Tensor, Tensor> Gemma4Transformer::constructModel() {
     createLayer("scalar_multiply",
                 {
                   withKey("name", "per_layer_input_scale"),
-                  withKey("packed", "false"),
+                  withKey("use_global_weight_dtype", "false"),
                   withKey("multiplier", std::to_string(per_layer_input_scale)),
                 }));
   per_layer_input = per_layer_input_scale_layer(per_layer_sum_out);
@@ -324,7 +325,8 @@ std::pair<Tensor, Tensor> Gemma4Transformer::constructModel() {
 
   std::vector<std::string> output_norm_props = {
     withKey("name", "output_norm"),
-    withKey("epsilon", std::to_string(NORM_EPS)), withKey("packed", "false")};
+    withKey("epsilon", std::to_string(NORM_EPS)),
+    withKey("use_global_weight_dtype", "false")};
   appendSkipPrefillIfNeeded(output_norm_props, true);
   LayerHandle out_norm(createLayer("rms_norm", output_norm_props));
   h = out_norm(h);
@@ -340,7 +342,8 @@ Tensor Gemma4Transformer::createTransformerDecoderBlock(const int layer_id,
   const bool is_kv_shared_layer = isKVSharedLayer(layer_id);
   std::vector<std::string> attn_norm_props = {
     withKey("name", "layer" + std::to_string(layer_id) + "_attention_norm"),
-    withKey("epsilon", std::to_string(NORM_EPS)), withKey("packed", "false")};
+    withKey("epsilon", std::to_string(NORM_EPS)),
+    withKey("use_global_weight_dtype", "false")};
   appendSkipPrefillIfNeeded(attn_norm_props, is_kv_shared_layer);
   LayerHandle attn_norm(createLayer("rms_norm", attn_norm_props));
   Tensor normed = attn_norm(input);
@@ -376,7 +379,8 @@ Tensor Gemma4Transformer::createTransformerDecoderBlock(const int layer_id,
   std::vector<std::string> post_attn_norm_props = {
     withKey("name",
             "layer" + std::to_string(layer_id) + "_post_attention_norm"),
-    withKey("epsilon", std::to_string(NORM_EPS)), withKey("packed", "false")};
+    withKey("epsilon", std::to_string(NORM_EPS)),
+    withKey("use_global_weight_dtype", "false")};
   appendSkipPrefillIfNeeded(post_attn_norm_props, is_kv_shared_layer);
   LayerHandle post_attn_norm(createLayer("rms_norm", post_attn_norm_props));
   Tensor post_normed = post_attn_norm(att_out);
@@ -390,7 +394,8 @@ Tensor Gemma4Transformer::createTransformerDecoderBlock(const int layer_id,
 
   std::vector<std::string> pre_ffn_norm_props = {
     withKey("name", "layer" + std::to_string(layer_id) + "_pre_ffn_norm"),
-    withKey("epsilon", std::to_string(NORM_EPS)), withKey("packed", "false")};
+    withKey("epsilon", std::to_string(NORM_EPS)),
+    withKey("use_global_weight_dtype", "false")};
   appendSkipPrefillIfNeeded(pre_ffn_norm_props, is_kv_shared_layer);
   LayerHandle pre_ffn_norm(createLayer("rms_norm", pre_ffn_norm_props));
   Tensor pre_ffn = pre_ffn_norm(post_attention);
@@ -399,7 +404,8 @@ Tensor Gemma4Transformer::createTransformerDecoderBlock(const int layer_id,
 
   std::vector<std::string> post_ffn_norm_props = {
     withKey("name", "layer" + std::to_string(layer_id) + "_post_ffn_norm"),
-    withKey("epsilon", std::to_string(NORM_EPS)), withKey("packed", "false")};
+    withKey("epsilon", std::to_string(NORM_EPS)),
+    withKey("use_global_weight_dtype", "false")};
   appendSkipPrefillIfNeeded(post_ffn_norm_props, is_kv_shared_layer);
   LayerHandle post_ffn_norm(createLayer("rms_norm", post_ffn_norm_props));
   Tensor post_ffn = post_ffn_norm(ffn_out);
@@ -467,7 +473,8 @@ Tensor Gemma4Transformer::createTransformerDecoderBlock(const int layer_id,
   std::vector<std::string> post_per_layer_input_norm_props = {
     withKey("name",
             "layer" + std::to_string(layer_id) + "_post_per_layer_input_norm"),
-    withKey("epsilon", std::to_string(NORM_EPS)), withKey("packed", "false")};
+    withKey("epsilon", std::to_string(NORM_EPS)),
+    withKey("use_global_weight_dtype", "false")};
   appendSkipPrefillIfNeeded(post_per_layer_input_norm_props,
                             is_kv_shared_layer);
   LayerHandle post_per_layer_input_norm(
@@ -485,7 +492,7 @@ Tensor Gemma4Transformer::createTransformerDecoderBlock(const int layer_id,
 
   std::vector<std::string> layer_scalar_props = {
     withKey("name", "layer" + std::to_string(layer_id) + "_layer_scalar"),
-    withKey("packed", "false"),
+    withKey("use_global_weight_dtype", "false"),
     withKey("use_weight", "true"),
   };
   appendSkipPrefillIfNeeded(layer_scalar_props, is_kv_shared_layer);
@@ -529,7 +536,7 @@ Tensor Gemma4Transformer::createSharedAttention(const int layer_id,
 
   // q_norm on per-head projection [B, S, Nq*Dh]
   std::vector<std::string> q_norm_params = {
-    withKey("name", Q_norm), withKey("packed", "false"),
+    withKey("name", Q_norm), withKey("use_global_weight_dtype", "false"),
     withKey("epsilon", std::to_string(NORM_EPS)),
     withKey("feature_size", std::to_string(curr_head_dim))};
   appendSkipPrefillIfNeeded(q_norm_params, is_kv_shared_layer);
@@ -543,7 +550,7 @@ Tensor Gemma4Transformer::createSharedAttention(const int layer_id,
   // TODO : fix AVX kernel to not make it divide by 1/sqrt(head_dim) on gemma4
   LayerHandle q_scale(createLayer(
     "scalar_multiply",
-    {withKey("name", Q_scaled), withKey("packed", "false"),
+    {withKey("name", Q_scaled), withKey("use_global_weight_dtype", "false"),
      withKey("multiplier",
              std::to_string(std::sqrt(static_cast<float>(curr_head_dim))))}));
   Tensor q_scaled = q_scale(q_normed);
@@ -648,7 +655,7 @@ Tensor Gemma4Transformer::createAttention(const int layer_id, int seq_len,
 
   // q_norm on per-head projection [B, S, Nq*Dh]
   std::vector<std::string> q_norm_params = {
-    withKey("name", Q_norm), withKey("packed", "false"),
+    withKey("name", Q_norm), withKey("use_global_weight_dtype", "false"),
     withKey("epsilon", std::to_string(NORM_EPS)),
     withKey("feature_size", std::to_string(curr_head_dim))};
   appendSkipPrefillIfNeeded(q_norm_params, is_kv_shared_layer);
@@ -660,14 +667,14 @@ Tensor Gemma4Transformer::createAttention(const int layer_id, int seq_len,
   // sqrt(head_dim) to preserve Gemma4 semantics.
   LayerHandle q_scale(createLayer(
     "scalar_multiply",
-    {withKey("name", Q_scaled), withKey("packed", "false"),
+    {withKey("name", Q_scaled), withKey("use_global_weight_dtype", "false"),
      withKey("multiplier",
              std::to_string(std::sqrt(static_cast<float>(curr_head_dim))))}));
   Tensor q_scaled = q_scale(q_normed);
 
   // k_norm on per-head projection [B, S, Nk*Dh]
   std::vector<std::string> k_norm_params = {
-    withKey("name", K_norm), withKey("packed", "false"),
+    withKey("name", K_norm), withKey("use_global_weight_dtype", "false"),
     withKey("epsilon", std::to_string(NORM_EPS)),
     withKey("feature_size", std::to_string(curr_head_dim))};
   appendSkipPrefillIfNeeded(k_norm_params, is_kv_shared_layer);
@@ -676,7 +683,7 @@ Tensor Gemma4Transformer::createAttention(const int layer_id, int seq_len,
 
   // v_norm on per-head projection [B, S, Nk*Dh] (no learned scale)
   std::vector<std::string> v_norm_params = {
-    withKey("name", V_norm), withKey("packed", "false"),
+    withKey("name", V_norm), withKey("use_global_weight_dtype", "false"),
     withKey("epsilon", std::to_string(NORM_EPS)),
     withKey("feature_size", std::to_string(curr_head_dim))};
   v_norm_params.push_back(withKey("use_gamma", "false"));

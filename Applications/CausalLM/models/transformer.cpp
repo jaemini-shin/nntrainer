@@ -261,7 +261,7 @@ std::pair<Tensor, Tensor> Transformer::constructModel() {
   LayerHandle out_norm(
     createLayer("rms_norm", {withKey("name", "output_norm"),
                              withKey("epsilon", std::to_string(NORM_EPS)),
-                             withKey("packed", "false")}));
+                             withKey("use_global_weight_dtype", "false")}));
   h = out_norm(h);
 
   return {x, h};
@@ -399,7 +399,7 @@ Tensor Transformer::createTransformerDecoderBlock(const int layer_id,
     "rms_norm",
     {withKey("name", "layer" + std::to_string(layer_id) + "_attention_norm"),
      withKey("epsilon", std::to_string(NORM_EPS)),
-     withKey("packed", "false")}));
+     withKey("use_global_weight_dtype", "false")}));
   Tensor normed = attn_norm(input);
 
   Tensor att_out = createAttention(layer_id, INIT_SEQ_LEN, NUM_HEADS, HEAD_DIM,
@@ -414,7 +414,7 @@ Tensor Transformer::createTransformerDecoderBlock(const int layer_id,
     "rms_norm",
     {withKey("name", "layer" + std::to_string(layer_id) + "_ffn_norm"),
      withKey("epsilon", std::to_string(NORM_EPS)),
-     withKey("packed", "false")}));
+     withKey("use_global_weight_dtype", "false")}));
   Tensor ffn_normed = ffn_norm(residual);
 
   Tensor ffn_out = createMlp(layer_id, DIM, INTERMEDIATE_SIZE, ffn_normed);

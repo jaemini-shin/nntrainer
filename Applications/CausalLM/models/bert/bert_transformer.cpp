@@ -120,9 +120,10 @@ std::pair<std::vector<Tensor>, Tensor> BertTransformer::constructBertGraph() {
   Tensor h = embedding_sum({word, position, token_type});
 
   LayerHandle embedding_norm(createLayer(
-    "layer_normalization", {withKey("name", "embedding_norm"),
-                            withKey("epsilon", toStringPrecise(NORM_EPS)),
-                            withKey("axis", 3), withKey("packed", "false")}));
+    "layer_normalization",
+    {withKey("name", "embedding_norm"),
+     withKey("epsilon", toStringPrecise(NORM_EPS)), withKey("axis", 3),
+     withKey("use_global_weight_dtype", "false")}));
   h = embedding_norm(h);
 
   /** --------- Encoder blocks --------- */
@@ -150,7 +151,7 @@ Tensor BertTransformer::createTransformerDecoderBlock(const int layer_id,
     "layer_normalization",
     {withKey("name", "layer" + std::to_string(layer_id) + "_attention_norm"),
      withKey("epsilon", toStringPrecise(NORM_EPS)), withKey("axis", 3),
-     withKey("packed", "false")}));
+     withKey("use_global_weight_dtype", "false")}));
   Tensor attention_normed = attention_norm(attention_residual);
 
   // Feed-forward sub-block
@@ -167,7 +168,7 @@ Tensor BertTransformer::createTransformerDecoderBlock(const int layer_id,
     "layer_normalization",
     {withKey("name", "layer" + std::to_string(layer_id) + "_ffn_norm"),
      withKey("epsilon", toStringPrecise(NORM_EPS)), withKey("axis", 3),
-     withKey("packed", "false")}));
+     withKey("use_global_weight_dtype", "false")}));
 
   return ffn_norm(ffn_residual);
 }

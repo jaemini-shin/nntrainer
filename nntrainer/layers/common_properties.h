@@ -162,20 +162,17 @@ public:
 };
 
 /**
- * @brief trainable property, use this to set and check how if certain layer is
- * trainable
+ * @brief UseGlobalWeightDtype property to determine weight dtype source
  *
  */
-class Packed : public nntrainer::Property<bool> {
+class UseGlobalWeightDtype : public nntrainer::Property<bool> {
 public:
   /**
-   * @brief Construct a new Trainable object
-   * if it is true, then weight type always follows tensor_type[1]( Global
-   * Weight Type ). if it is false, the weight type follows tensor_type[2]
-   * (Global Activation Type)
+   * @brief Construct a new UseGlobalWeightDtype object
+   * true (default): use global weight type, false: use activation type
    */
-  Packed(bool val = true) : nntrainer::Property<bool>(val) {}
-  static constexpr const char *key = "packed";
+  UseGlobalWeightDtype(bool val = true) : nntrainer::Property<bool>(val) {}
+  static constexpr const char *key = "use_global_weight_dtype";
   using prop_tag = bool_prop_tag;
 };
 

@@ -52,7 +52,7 @@ class Activation;
 class SharedFrom;
 class InputConnection;
 class ClipGradByGlobalNorm;
-class Packed;
+class UseGlobalWeightDtype;
 class LossScaleForMixed;
 class ComputeEngine;
 } // namespace props
@@ -1055,8 +1055,8 @@ properties in the context/graph unless intended. */
     std::tuple<props::Name, props::Distribute, props::Trainable,
                std::vector<props::InputConnection>,
                std::vector<props::InputShape>, props::SharedFrom,
-               props::ClipGradByGlobalNorm, props::Packed, props::WeightDtype,
-               props::InputDtype, props::LossScaleForMixed,
+               props::ClipGradByGlobalNorm, props::UseGlobalWeightDtype,
+               props::WeightDtype, props::InputDtype, props::LossScaleForMixed,
                props::ComputeEngine>;
 
   using RealizationPropsType = std::tuple<props::Flatten, props::Activation>;

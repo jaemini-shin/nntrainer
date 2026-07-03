@@ -402,7 +402,7 @@ Tensor createTransformerDecoder(const int layer_id, Tensor input) {
     "rms_norm", {nntrainer::withKey("name", "layer" + std::to_string(layer_id) +
                                               "_attention_norm"),
                  nntrainer::withKey("epsilon", std::to_string(NORM_EPS)),
-                 nntrainer::withKey("packed", "false")}));
+                 nntrainer::withKey("use_global_weight_dtype", "false")}));
   auto normed = att_norm(input);
 
   auto att_out = createAttentionLayer(layer_id, INIT_SEQ_LEN, NUM_HEADS,
@@ -418,7 +418,7 @@ Tensor createTransformerDecoder(const int layer_id, Tensor input) {
     "rms_norm", {nntrainer::withKey("name", "layer" + std::to_string(layer_id) +
                                               "_ffn_norm"),
                  nntrainer::withKey("epsilon", std::to_string(NORM_EPS)),
-                 nntrainer::withKey("packed", "false")}));
+                 nntrainer::withKey("use_global_weight_dtype", "false")}));
   auto ffn_normed = ffn_norm(residual);
 
   auto ffn_out =
@@ -439,8 +439,8 @@ std::pair<Tensor, Tensor> buildLLaMAGraph() {
   auto x = Tensor({1, 1, 1, static_cast<unsigned int>(INIT_SEQ_LEN)}, "input0");
 
   LayerHandle embedding(ml::train::layer::Embedding(
-    {"name=embedding0", "in_dim=" + std::to_string(NUM_VOCAB), "packed=false",
-     "out_dim=" + std::to_string(DIM)}));
+    {"name=embedding0", "in_dim=" + std::to_string(NUM_VOCAB),
+     "use_global_weight_dtype=false", "out_dim=" + std::to_string(DIM)}));
   auto h = embedding(x);
 
   for (int i = 0; i < NUM_LAYERS; i++) {
@@ -450,14 +450,15 @@ std::pair<Tensor, Tensor> buildLLaMAGraph() {
   LayerHandle out_norm(createLayer(
     "rms_norm", {nntrainer::withKey("name", "output_norm"),
                  nntrainer::withKey("epsilon", std::to_string(NORM_EPS)),
-                 nntrainer::withKey("packed", "false")}));
+                 nntrainer::withKey("use_global_weight_dtype", "false")}));
   h = out_norm(h);
 
-  LayerHandle out_fc(createLayer("fully_connected",
-                                 {nntrainer::withKey("name", "output_of_llama"),
-                                  nntrainer::withKey("unit", NUM_VOCAB),
-                                  nntrainer::withKey("disable_bias", "true"),
-                                  nntrainer::withKey("packed", "false")}));
+  LayerHandle out_fc(
+    createLayer("fully_connected",
+                {nntrainer::withKey("name", "output_of_llama"),
+                 nntrainer::withKey("unit", NUM_VOCAB),
+                 nntrainer::withKey("disable_bias", "true"),
+                 nntrainer::withKey("use_global_weight_dtype", "false")}));
   auto y = out_fc(h);
 
   return {x, y};
