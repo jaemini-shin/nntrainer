@@ -762,6 +762,9 @@ Tensor &FloatTensor::dot(Tensor const &input, Tensor &output, bool trans,
   case Tdatatype::QS4CX:
     dotQs4cx(input, output, trans, trans_in, beta, input.getDataType());
     break;
+  case Tdatatype::QS8CX:
+    dotQs8cx(input, output, trans, trans_in, beta, input.getDataType());
+    break;
   default:
     throw std::invalid_argument("Error: unsupported datatype");
   }
@@ -1097,6 +1100,16 @@ Tensor &FloatTensor::dotQs4cx(Tensor const &input, Tensor &output, bool trans,
 #endif
 
   return output;
+}
+
+Tensor &FloatTensor::dotQs8cx(Tensor const &input, Tensor &output, bool trans,
+                              bool trans_in, float beta,
+                              Tdatatype dtype) const {
+  ///@todo Implement the QS8CX (qai8dxp x qsi8cxp) GEMM path once an 8-bit
+  /// per-channel weight kernel is available. QS4CX dispatches to
+  /// gemm_qai8dxp_qsi4cxp, but there is no qsi8cxp counterpart yet.
+  throw std::runtime_error(
+    "FloatTensor::dotQs8cx() is not yet implemented: no qsi8cxp GEMM kernel.");
 }
 
 void FloatTensor::copy(const Tensor &from) {
