@@ -9,6 +9,7 @@
  */
 
 #include <cpu_backend.h>
+#include <kleidiai_interface.h>
 #include <qs8cx_tensor.h>
 #include <tensor.h>
 
@@ -67,17 +68,32 @@ void *QS8CX_Tensor::getData() const {
 }
 
 void QS8CX_Tensor::pack() {
-  ///@todo Implement 8-bit per-channel (qsi8cxp) weight packing once a backend
-  /// kernel is available. QS4CX uses rhs_pack_qsi4cxp_qs4cxs1s0, but there is
-  /// no qsi8cxp counterpart yet.
-  throw std::runtime_error(
-    "QS8CX_Tensor::pack() is not yet implemented: no qsi8cxp pack kernel.");
+  if (packed_data) {
+    return;
+  }
+
+  size_t opt_kernel_idx = 3;
+  const size_t K = height();
+  const size_t N = width();
+
+  size_t packed_size =
+    nntrainer::__kai_get_rhs_packed_size_qsi8cxp_qsi8cx(N, K, opt_kernel_idx);
+  packed_data = std::make_unique<uint8_t[]>(packed_size);
+
+  nntrainer::__kai_rhs_pack_qsi8cxp_qsi8cx(N, K, packed_data.get(), getData(),
+                                           getScale(), opt_kernel_idx);
+
+  if (!packed_data) {
+    throw std::runtime_error{"something wrong"};
+  }
 }
 
 void *QS8CX_Tensor::getPackedData() const {
-  throw std::runtime_error(
-    "QS8CX_Tensor::getPackedData() is not yet implemented: no qsi8cxp pack "
-    "kernel.");
+  if (!packed_data) {
+    throw std::runtime_error{"pack before run model"};
+  }
+
+  return packed_data.get();
 }
 
 size_t QS8CX_Tensor::size() const {

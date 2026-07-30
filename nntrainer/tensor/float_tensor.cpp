@@ -1117,7 +1117,7 @@ Tensor &FloatTensor::dotQs8cx(Tensor const &input, Tensor &output, bool trans,
 
   size_t opt_kernel_idx = (M == 1) ? 1 : 3;
 
-  gemm_qai8dxp_qsi4cxp(M, N, K, lhs, rhs, out, opt_kernel_idx);
+  gemm_qai8dxp_qsi8cxp(M, N, K, lhs, rhs, out, opt_kernel_idx);
 #elif defined(__x86_64__) || defined(__i586__) || defined(_M_X64) ||           \
   defined(_M_IX86)
   throw std::runtime_error(

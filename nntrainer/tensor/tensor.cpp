@@ -340,6 +340,10 @@ Tensor::Tensor(const std::unique_ptr<TensorBase> &rhs) {
 #else
     throw std::invalid_argument("Error: enable-fp16 is not enabled");
 #endif
+  } else if (rhs->getDataType() == Tdatatype::QS4CX) {
+    itensor_ = std::make_unique<QS4CX_Tensor>(*rhs.get());
+  } else if (rhs->getDataType() == Tdatatype::QS8CX) {
+    itensor_ = std::make_unique<QS8CX_Tensor>(*rhs.get());
   } else if (rhs->getDataType() == Tdatatype::UINT4) {
     itensor_ = std::make_unique<Uint4QTensor>(*rhs.get());
   } else if (rhs->getDataType() == Tdatatype::UINT8) {
@@ -379,6 +383,10 @@ Tensor &Tensor::operator=(const Tensor &rhs) {
     itensor_ = std::make_unique<Q6_K_Tensor>(*rhs.itensor_);
   } else if (rhs.getDataType() == Tdatatype::Q4_0) {
     itensor_ = std::make_unique<Q4_0_Tensor>(*rhs.itensor_);
+  } else if (rhs.getDataType() == Tdatatype::QS4CX) {
+    itensor_ = std::make_unique<QS4CX_Tensor>(*rhs.itensor_);
+  } else if (rhs.getDataType() == Tdatatype::QS8CX) {
+    itensor_ = std::make_unique<QS8CX_Tensor>(*rhs.itensor_);
   } else if (rhs.getDataType() == Tdatatype::UINT4) {
     itensor_ = std::make_unique<Uint4QTensor>(*rhs.itensor_);
   } else if (rhs.getDataType() == Tdatatype::UINT8) {

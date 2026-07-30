@@ -371,7 +371,9 @@ void Transformer::repack_weight() {
       auto weights = context.getWeights();
       for (auto &w : weights) {
         if (w->getVariableRef().getDataType() ==
-            ml::train::TensorDim::DataType::QS4CX) {
+              ml::train::TensorDim::DataType::QS4CX ||
+            w->getVariableRef().getDataType() ==
+              ml::train::TensorDim::DataType::QS8CX) {
           w->getVariableRef().pack();
         }
       }
