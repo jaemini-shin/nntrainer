@@ -363,7 +363,9 @@ void Transformer::repack_weight() {
     fn = [](ml::train::Layer &l, nntrainer::RunLayerContext &context, void *) {
       // repack FC layer only
       if (l.getType() != "fully_connected" &&
-          l.getType() != "shared_fully_connected")
+          l.getType() != "shared_fully_connected" &&
+          l.getType() != "lm_head"
+        )
         return;
 
       auto weights = context.getWeights();
