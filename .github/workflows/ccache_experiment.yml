@@ -1,0 +1,123 @@
+name: "EXPERIMENT - ccache effect (Ubuntu Meson)"
+
+# One-off experiment to quantify how much ccache would cut the Ubuntu Meson
+# build time. It builds ONCE, then wipes only the object files and rebuilds in
+# the SAME build directory:
+#   BUILD 1 = cold ccache (every TU is a miss) ~= today's CI (no cache)
+#   BUILD 2 = same dir, objects removed, warm ccache (every TU is a hit)
+#             ~= a CI run that restored a warm cache from main
+# CI always does a clean checkout, so ninja's own incremental build never helps
+# across runs; only ccache does. Using the SAME build dir (identical -I paths,
+# flags and sources) is what makes the warm run actually hit the cache.
+#
+# Trigger: push to this experiment branch, or manual dispatch. Intentionally NOT
+# on pull_request, so it does not drag in the other 20+ PR workflows.
+
+on:
+  push:
+    branches: [ 'ci/ccache-experiment' ]
+  workflow_dispatch:
+
+jobs:
+  ccache-ab:
+    runs-on: ubuntu-24.04
+    name: cold-vs-warm ccache (fp16=false)
+    steps:
+    - uses: actions/checkout@v4
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost
+        sudo apt-get clean
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+    - name: install additional package from PPA for testing
+      run: sudo add-apt-repository -y ppa:nnstreamer/ppa && sudo apt-get update
+    - name: install minimal requirements
+      run: sudo apt-get update && sudo apt-get install -y gcc g++ pkg-config libopenblas-dev libiniparser-dev libjsoncpp-dev libcurl3-dev tensorflow2-lite-dev nnstreamer-dev libglib2.0-dev libgstreamer1.0-dev libgtest-dev ml-api-common-dev flatbuffers-compiler ml-inference-api-dev libunwind-dev
+    - name: install additional packages for features
+      run: sudo apt-get install -y python3-dev python3-numpy python3
+    - name: gcc version change
+      run: |
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        sudo apt-get update
+        sudo apt-get install -y --fix-broken build-essential
+        sudo apt-get install -y gcc-13 g++-13 libcc1-0 libgcc-13-dev
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 1000
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 1000
+        sudo update-alternatives --set gcc /usr/bin/gcc-13
+    - name: Install submodules
+      run: git submodule sync && git submodule update --init --recursive
+    - name: install build systems + ccache
+      run: sudo apt-get install -y meson ninja-build ccache
+    - name: Put ccache on PATH and set cache dir
+      run: |
+        echo "/usr/lib/ccache" >> "$GITHUB_PATH"
+        echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
+    - name: ccache init
+      run: |
+        which gcc g++ && gcc --version | head -1
+        ccache --version | head -1
+        ccache --max-size=10G
+        ccache -p | grep -E 'max_size|cache_dir' || true
+    - name: meson setup (matches ubuntu_clean_meson_build.yml, fp16=false)
+      run: |
+        meson \
+          --buildtype=plain \
+          --prefix=/usr \
+          --sysconfdir=/etc \
+          --libdir=lib/x86_64-linux-gnu \
+          --bindir=lib/nntrainer/bin \
+          --includedir=include \
+          -Dinstall-app=true \
+          -Denable-transformer=true \
+          -Dreduce-tolerance=false \
+          -Denable-debug=true \
+          -Dml-api-support=enabled \
+          -Denable-nnstreamer-tensor-filter=enabled \
+          -Denable-nnstreamer-tensor-trainer=enabled \
+          -Denable-nnstreamer-backbone=true \
+          -Dcapi-ml-common-actual=capi-ml-common \
+          -Dcapi-ml-inference-actual=capi-ml-inference \
+          -Denable-capi=enabled \
+          -Denable-fp16=false \
+          build
+        echo "::group::meson detected compiler (should be wrapped by ccache)"
+        grep -iE 'ccache|c\+\+ compiler|c compiler' build/meson-logs/meson-log.txt | head -20 || true
+        echo "::endgroup::"
+    - name: "BUILD 1 - COLD ccache (all miss = today's no-cache CI)"
+      run: |
+        ccache --zero-stats
+        start=$(date +%s); ninja -C build; end=$(date +%s)
+        echo "COLD_SECONDS=$((end-start))" | tee cold.txt
+        echo "::notice title=COLD ninja::$((end-start)) s"
+        echo "::group::ccache stats after COLD"; ccache -s; echo "::endgroup::"
+    - name: "BUILD 2 - WARM ccache (same dir, objects wiped = warm-cache CI)"
+      run: |
+        find build -name '*.o' -delete
+        ccache --zero-stats
+        start=$(date +%s); ninja -C build; end=$(date +%s)
+        echo "WARM_SECONDS=$((end-start))" | tee warm.txt
+        echo "::notice title=WARM ninja::$((end-start)) s"
+        echo "::group::ccache stats after WARM (expect near-100% hit)"; ccache -s; echo "::endgroup::"
+    - name: SUMMARY
+      if: always()
+      run: |
+        cold=$(cut -d= -f2 cold.txt 2>/dev/null || echo 0)
+        warm=$(cut -d= -f2 warm.txt 2>/dev/null || echo 0)
+        {
+          echo "## ccache experiment - Ubuntu Meson (ubuntu-24.04, fp16=false)"
+          echo ""
+          echo "| ninja build | seconds |"
+          echo "|---|---|"
+          echo "| COLD (cache miss = current CI baseline) | ${cold}s |"
+          echo "| WARM (cache hit = with warm ccache)     | ${warm}s |"
+          if [ "${cold:-0}" -gt 0 ] 2>/dev/null; then
+            echo "| **compile time saved** | **$(( (cold - warm) * 100 / cold ))%** |"
+          fi
+          echo ""
+          echo "> Baseline sanity check: today's production Ubuntu Meson job spends ~703s in \`ninja\`."
+          echo "> COLD here should land near that; WARM shows what a warm-cache CI run would take."
+        } >> "$GITHUB_STEP_SUMMARY"
+        cat "$GITHUB_STEP_SUMMARY"
