@@ -38,6 +38,11 @@ jobs:
       run: |
         gbs build --skip-srcrpm --define "_skip_debug_rpm 1" -A x86_64 --define "unit_test 1"
 
+    - name: prune gbs package cache
+      # GBS never purges superseded RPMs, so the cache grows unbounded across
+      # daily restore/save cycles. Keep only the newest version of each package.
+      run: bash .github/workflows/gbs-cache-prune.sh
+
     - name: save gbs cache
       uses: actions/cache/save@v4
       with:
