@@ -349,6 +349,15 @@ void compute_kcaches(const float *in, const BType *kcache, float *output,
                      int head_end = -1);
 
 /**
+ * @brief Optimized compute_kcaches (Q fp32, K fp16, O fp32)
+ */
+void compute_kcaches_opt(const float *in, const __fp16 *kcache, float *output,
+                         int num_rows, int num_cache_head, int head_dim,
+                         int gqa_size, int tile_size,
+                         size_t local_window_size = UINT_MAX,
+                         int head_start = 0, int head_end = -1);
+
+/**
  * @brief Compute rotary embedding value
  * @param[in] width current w value from b, c, h, w
  * @param[in] dim unit length of simd computation
@@ -416,6 +425,15 @@ void compute_kcaches(const __fp16 *in, const __fp16 *kcache, __fp16 *output,
                      int gqa_size, int tile_size,
                      size_t local_window_size = UINT_MAX, int head_start = 0,
                      int head_end = -1);
+
+/**
+ * @brief Optimized all-fp16 compute_kcaches
+ */
+void compute_kcaches_opt(const __fp16 *in, const __fp16 *kcache, __fp16 *output,
+                         int num_rows, int num_cache_head, int head_dim,
+                         int gqa_size, int tile_size,
+                         size_t local_window_size = UINT_MAX,
+                         int head_start = 0, int head_end = -1);
 
 /**
  * @brief Compute rotary embedding value
