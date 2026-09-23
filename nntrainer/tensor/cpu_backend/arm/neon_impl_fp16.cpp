@@ -1405,6 +1405,33 @@ inline static float16x8_t exp_f16x8(float16x8_t x) {
   return vcombine_f16(vcvt_f16_f32(res_low), vcvt_f16_f32(res_high));
 }
 
+inline static float16x8_t exp_f16x8_fast(float16x8_t x) {
+  constexpr __fp16 kLog2e = 1.442695041f; // log2(e)
+  // minimax 2^f on f in [0,1): 2^f ~= 1 + f*(kC1 + f*(kC2 + f*kC3))
+  constexpr __fp16 kC1 = 0.6930712f;
+  constexpr __fp16 kC2 = 0.2416384f;
+  constexpr __fp16 kC3 = 0.0516903f;
+  constexpr __fp16 kOne = 1.0f;
+  constexpr int16_t kExpBias = 15;      // fp16 exponent bias
+  constexpr int16_t kMantBits = 10;     // fp16 mantissa width (exponent shift)
+  constexpr int16_t kMaxBiasedExp = 31; // clamp upper bound (>= -> inf)
+
+  float16x8_t k = vmulq_f16(x, vdupq_n_f16(kLog2e));
+  float16x8_t n = vrndmq_f16(k);   // floor(k)
+  float16x8_t f = vsubq_f16(k, n); // frac [0,1)
+  float16x8_t p = vfmaq_f16(vdupq_n_f16(kC2), f, vdupq_n_f16(kC3));
+  p = vfmaq_f16(vdupq_n_f16(kC1), f, p);
+  p = vfmaq_f16(vdupq_n_f16(kOne), f, p);
+  // 2^n: biased fp16 exponent (n + bias), clamped to [0, 31] BEFORE the shift
+  // so a very negative n cannot wrap the sign bit into a bogus exponent (n <=
+  // -15 underflows to 0, n >= 16 saturates to inf). Clamping the shifted bits
+  // would be too late — the wrap already happened.
+  int16x8_t bias = vaddq_s16(vcvtq_s16_f16(n), vdupq_n_s16(kExpBias));
+  bias = vminq_s16(vmaxq_s16(bias, vdupq_n_s16(0)), vdupq_n_s16(kMaxBiasedExp));
+  float16x8_t pw = vreinterpretq_f16_s16(vshlq_n_s16(bias, kMantBits));
+  return vmulq_f16(p, pw);
+}
+
 // Static helper function for softmax_row_inplace with __fp16 sink
 // Includes handling of a "sink" token (attention sink)
 static void softmax_row_inplace_with_fp16_sink(__fp16 *qk_out, size_t start_row,
@@ -1554,11 +1581,72 @@ static void softmax_row_inplace_no_sink(__fp16 *qk_out, size_t start_row,
   delete[] sum_vals;
 }
 
+static void softmax_row_inplace_no_sink_opt(__fp16 *qk_out, size_t start_row,
+                                            size_t end_row, size_t num_heads) {
+  const size_t vec_end = num_heads & ~((size_t)7);
+
+  // 1. max per head (column) across rows
+  std::vector<__fp16> max_vals(num_heads), sum_vals(num_heads),
+    recip_vals(num_heads);
+  std::memcpy(max_vals.data(), qk_out + start_row * num_heads,
+              num_heads * sizeof(__fp16));
+  for (size_t r = start_row + 1; r < end_row; ++r) {
+    __fp16 *row = qk_out + num_heads * r;
+    for (size_t c = 0; c < vec_end; c += 8)
+      vst1q_f16(max_vals.data() + c,
+                vmaxq_f16(vld1q_f16(row + c), vld1q_f16(max_vals.data() + c)));
+    for (size_t c = vec_end; c < num_heads; ++c)
+      max_vals[c] = std::max(max_vals[c], row[c]);
+  }
+
+  // 2. exp(x - max) (native fp16) and sum per head; sum_vals starts at 0
+  for (size_t r = start_row; r < end_row; ++r) {
+    __fp16 *row = qk_out + num_heads * r;
+    for (size_t c = 0; c < vec_end; c += 8) {
+      float16x8_t s = vld1q_f16(sum_vals.data() + c);
+      float16x8_t e = exp_f16x8_fast(
+        vsubq_f16(vld1q_f16(row + c), vld1q_f16(max_vals.data() + c)));
+      vst1q_f16(row + c, e);
+      vst1q_f16(sum_vals.data() + c, vaddq_f16(s, e));
+    }
+    for (size_t c = vec_end; c < num_heads; ++c) {
+      float e = std::exp((float)row[c] - (float)max_vals[c]);
+      row[c] = e;
+      sum_vals[c] += e;
+    }
+  }
+
+  // 3. reciprocal of the sum once per head (fp32, 2 Newton), then multiply
+  for (size_t c = 0; c < vec_end; c += 8) {
+    float16x8_t s = vld1q_f16(sum_vals.data() + c);
+    float32x4_t s0 = vcvt_f32_f16(vget_low_f16(s));
+    float32x4_t s1 = vcvt_f32_f16(vget_high_f16(s));
+    float32x4_t r0 = vrecpeq_f32(s0), r1 = vrecpeq_f32(s1);
+    r0 = vmulq_f32(vrecpsq_f32(s0, r0), r0);
+    r1 = vmulq_f32(vrecpsq_f32(s1, r1), r1);
+    r0 = vmulq_f32(vrecpsq_f32(s0, r0), r0);
+    r1 = vmulq_f32(vrecpsq_f32(s1, r1), r1);
+    vst1q_f16(recip_vals.data() + c,
+              vcombine_f16(vcvt_f16_f32(r0), vcvt_f16_f32(r1)));
+  }
+  for (size_t c = vec_end; c < num_heads; ++c)
+    recip_vals[c] = (__fp16)(1.0f / (float)sum_vals[c]);
+  for (size_t r = start_row; r < end_row; ++r) {
+    __fp16 *row = qk_out + num_heads * r;
+    for (size_t c = 0; c < vec_end; c += 8)
+      vst1q_f16(row + c, vmulq_f16(vld1q_f16(row + c),
+                                   vld1q_f16(recip_vals.data() + c)));
+    for (size_t c = vec_end; c < num_heads; ++c)
+      row[c] = (__fp16)((float)row[c] * (float)recip_vals[c]);
+  }
+}
+
 template <>
 void softmax_row_inplace(__fp16 *qk_out, size_t start_row, size_t end_row,
                          size_t num_heads, __fp16 *sink) {
   if (sink == nullptr) {
-    return softmax_row_inplace_no_sink(qk_out, start_row, end_row, num_heads);
+    return softmax_row_inplace_no_sink_opt(qk_out, start_row, end_row,
+                                           num_heads);
   } else {
     return softmax_row_inplace_with_fp16_sink(qk_out, start_row, end_row,
                                               num_heads, sink);
