@@ -380,9 +380,9 @@ void compute_fp16vcache_transposed(int row_num, const _FP16 *in,
                                    int num_cache_head, int gqa_size,
                                    int head_dim, size_t local_window_size,
                                    int head_start, int head_end) {
-  neon::compute_fp16vcache_transposed(row_num, in, vcache, output,
-                                      num_cache_head, gqa_size, head_dim,
-                                      local_window_size, head_start, head_end);
+  neon::compute_fp16vcache_transposed_opt(
+    row_num, in, vcache, output, num_cache_head, gqa_size, head_dim,
+    local_window_size, head_start, head_end);
 }
 
 void compute_kcaches(const _FP16 *in, const _FP16 *kcache, _FP16 *output,

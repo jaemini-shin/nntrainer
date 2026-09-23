@@ -314,6 +314,14 @@ void compute_fp16vcache_fp32_transposed(int row_num, const float *in,
                                         int head_start = 0, int head_end = -1);
 
 /**
+ * @brief Optimized compute_fp16vcache_fp32_transposed
+ */
+void compute_fp16vcache_fp32_transposed_opt(
+  int row_num, const float *in, const __fp16 *vcache, float *output,
+  int num_cache_head, int gqa_size, int head_dim,
+  size_t local_window_size = UINT_MAX, int head_start = 0, int head_end = -1);
+
+/**
  * @brief Compute Key Cache Dot Products (Attention Scores)
  *
  * Perform: Output = (Query * Key_cache) / sqrt(head_dim)
@@ -401,6 +409,16 @@ void compute_fp16vcache_transposed(int row_num, const __fp16 *in,
                                    int head_dim,
                                    size_t local_window_size = UINT_MAX,
                                    int head_start = 0, int head_end = -1);
+
+/**
+ * @brief Optimized all-fp16 compute_fp16vcache_transposed
+ */
+void compute_fp16vcache_transposed_opt(int row_num, const __fp16 *in,
+                                       const __fp16 *vcache, __fp16 *output,
+                                       int num_cache_head, int gqa_size,
+                                       int head_dim,
+                                       size_t local_window_size = UINT_MAX,
+                                       int head_start = 0, int head_end = -1);
 
 /**
  * @brief Compute kcaches
