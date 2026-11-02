@@ -4,8 +4,8 @@ name: "Build Test - Tizen/GBS"
 # - changed_file_list in GITHUB_ENV: the list of files updated in this pull-request.
 
 on:
-  pull_request:
-    branches: [ main ]
+  push:
+    branches: [ tmp/gbs-fp16 ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -17,24 +17,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - gbs_build_arch: "x86_64"
-            gbs_build_option: "--define \"unit_test 1\""
-          - gbs_build_arch: "armv7l"
-            gbs_build_option: "--define \"unit_test 0\""
           - gbs_build_arch: "aarch64"
-            gbs_build_option: "--define \"unit_test 0\""
+            gbs_build_option: "--define \"unit_test 0\" --define \"enable_fp16 1\""
 
     runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: -${{ github.event.pull_request.commits }}
-    - name: Check if rebuild required
-      uses: ./.github/actions/check-rebuild
-      with:
-        mode: gbs
+    - name: Force rebuild
+      run: echo "rebuild=1" >> $GITHUB_ENV
     - uses: actions/setup-python@v1
 
     - name: prepare GBS
@@ -62,6 +53,13 @@ jobs:
       if: env.rebuild == '1'
       run: |
         gbs build --skip-srcrpm --define "_skip_debug_rpm 1" -A ${{ matrix.gbs_build_arch }} ${{ matrix.gbs_build_option }}
+
+    - name: list fp16 headers in devel rpm
+      if: always()
+      run: |
+        find ~/GBS-ROOT/local/repos -name 'nntrainer-devel-[0-9]*.rpm' | tee /tmp/devel.txt
+        for r in $(cat /tmp/devel.txt); do rpm2cpio "$r" | cpio -t 2>/dev/null | grep -E 'hgemm|mask_neon|matrix_transpose_kernels|f16|half_tensor' ; done || true
+        grep -rhE 'enable-fp16|march=' ~/GBS-ROOT/local/BUILD-ROOTS/scratch.aarch64.0/home/abuild/rpmbuild/BUILD/*/build/meson-logs/meson-log.txt 2>/dev/null | head -5 || true
 
     # Disabled: nnstreamer/api/mlagent tests are unstable on Tizen CI
     # - name: get ML API
