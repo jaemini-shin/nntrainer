@@ -5,7 +5,7 @@ name: "Ubuntu pdebuild ccache"
 
 on:
   push:
-    branches: [ main ]
+    branches: [ ci/pdebuild-ccache-merge-test ]
     # same skip rule as check-rebuild's debian mode
     paths-ignore:
       - '**.md'
