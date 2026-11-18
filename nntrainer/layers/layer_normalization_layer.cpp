@@ -376,3 +376,4 @@ void LayerNormalizationLayer::setBatch(RunLayerContext &context,
 }
 
 } /* namespace nntrainer */
+// exp
