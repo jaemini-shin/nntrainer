@@ -7,6 +7,8 @@ on:
     # 04:30 AM (KST) Mon-Fri
     - cron: "30 19 * * 0-4"
   workflow_dispatch:
+  push:
+    branches: [ ci/pdebuild-ccache-daily-test ]
 
 jobs:
   build:
