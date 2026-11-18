@@ -1,0 +1,80 @@
+name: "EXP pdebuild ccache"
+
+# Fork-only experiment: measure pdebuild with/without ccache.
+# Each push to the branch is one sample; ccache state carries over via actions/cache.
+
+on:
+  push:
+    branches: [ ci/pdebuild-ccache-exp ]
+
+jobs:
+  build:
+    name: pdebuild (ccache=${{ matrix.ccache }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        ccache: [ on, off ]
+    env:
+      CCACHE_HOST_DIR: /var/cache/pbuilder/ccache
+    steps:
+    - uses: actions/checkout@v4
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost
+        sudo apt-get clean
+        sudo rm -f /etc/apt/sources.list.d/azure-cli.sources /etc/apt/sources.list.d/azure-cli.list || true
+    - uses: actions/setup-python@v1
+
+    - name: make cache dir for pbuilder
+      run: sudo mkdir --mode a=rwx --parents /var/cache/pbuilder
+
+    - name: restore ccache
+      if: matrix.ccache == 'on'
+      uses: actions/cache/restore@v4
+      with:
+        path: /var/cache/pbuilder/ccache
+        key: exp-pdebuild-ccache-${{ github.run_id }}
+        restore-keys: exp-pdebuild-ccache-
+
+    - name: prepare pdebuild
+      run: |
+        sudo add-apt-repository -y ppa:nnstreamer/ppa
+        sudo apt-get update && sudo apt-get install -y pbuilder debootstrap curl ubuntu-dev-tools qemu-user-static debian-archive-keyring ubuntu-keyring debhelper ccache
+        echo "DISTRIBUTION=jammy" > ~/.pbuilderrc
+        echo "OTHERMIRROR=\"deb [trusted=yes] http://archive.ubuntu.com/ubuntu jammy-backports universe |deb [trusted=yes] http://ppa.launchpad.net/nnstreamer/ppa/ubuntu jammy main\"" >> ~/.pbuilderrc
+        if [ "${{ matrix.ccache }}" = on ]; then
+          echo "CCACHEDIR=$CCACHE_HOST_DIR" >> ~/.pbuilderrc
+          sudo mkdir -p $CCACHE_HOST_DIR
+          printf 'max_size = 3G\n' | sudo tee $CCACHE_HOST_DIR/ccache.conf
+          sudo ccache -d $CCACHE_HOST_DIR -z || true
+          sudo ccache -d $CCACHE_HOST_DIR -s || true
+        fi
+        cat ~/.pbuilderrc
+        sudo mkdir -p /root/
+        sudo ln -s ~/.pbuilderrc /root/
+
+    - name: make pbuilder base.tgz
+      run: |
+        sudo pbuilder create --allow-untrusted
+        sudo pbuilder update --distribution jammy
+        sudo pbuilder update
+
+    - name: run pdebuild
+      run: |
+        pdebuild --architecture amd64 -- --distribution jammy
+
+    - name: ccache stats
+      if: always() && matrix.ccache == 'on'
+      run: |
+        sudo ccache -d $CCACHE_HOST_DIR -s -v || sudo ccache -d $CCACHE_HOST_DIR -s
+        sudo du -sh $CCACHE_HOST_DIR
+        sudo ls -la $CCACHE_HOST_DIR | head
+        sudo chmod -R a+rX $CCACHE_HOST_DIR
+
+    - name: save ccache
+      if: always() && matrix.ccache == 'on'
+      uses: actions/cache/save@v4
+      with:
+        path: /var/cache/pbuilder/ccache
+        key: exp-pdebuild-ccache-${{ github.run_id }}
